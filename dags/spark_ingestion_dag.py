@@ -34,7 +34,7 @@ spark_config = [
         "executor_memory": "1536m"
     },
     {
-        "table_name": "customers",
+        "table_name": "customer",
         "db_type": "postgres",
         
         "driver_cores": 1,
