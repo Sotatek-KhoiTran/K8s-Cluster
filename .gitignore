@@ -1,0 +1,9 @@
+k8s/db
+k8s/secret
+k8s-cluster-494403-05beff46e1cc.json
+test/
+.env
+k8s/airflow/values.yaml
+
+__pycache__/
+*.py[cod]
