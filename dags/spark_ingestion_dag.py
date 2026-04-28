@@ -22,14 +22,44 @@ dag = DAG(
     tags=["spark", "ingestion", "db_to_gcs"],
 )
 
-spark_ingestion_task = SparkKubernetesOperator(
-    task_id="spark_db_to_gcs",
-    namespace="spark",
-    application_file="spark-ingestion.yaml",
-    dag=dag,
-    kubernetes_conn_id="kubernetes_default",
-    do_xcom_push=False,
-    delete_on_termination=False
-)
+spark_config = [
+    {
+        "table_name": "orders",
+        "db_type": "sqlserver",
+        
+        "driver_cores": 1,
+        "driver_memory": "1536m",
+        "executor_cores": 1,
+        "executor_instances": 1,
+        "executor_memory": "1536m"
+    },
+    {
+        "table_name": "customers",
+        "db_type": "postgres",
+        
+        "driver_cores": 1,
+        "driver_memory": "1536m",
+        "executor_cores": 1,
+        "executor_instances": 1,
+        "executor_memory": "1536m"
+    }
+]
 
-spark_ingestion_task
+tasks = []
+
+for config in spark_config:
+    spark_ingestion_task = SparkKubernetesOperator(
+        task_id=f"spark_db_to_gcs_{config['table_name']}",
+        namespace="spark",
+        application_file="spark-ingestion.yaml",
+        params=config,
+        dag=dag,
+        kubernetes_conn_id="kubernetes_default",
+        do_xcom_push=False,
+        delete_on_termination=False
+    )
+
+    tasks.append(spark_ingestion_task)
+    
+for i in range(len(tasks) - 1):
+    tasks[i] >> tasks[i + 1]

@@ -32,7 +32,7 @@ def db_to_gcs(spark: SparkSession,
         "user": os.getenv(username_env),
         "password": os.getenv(password_env),
         "driver": driver,
-        "fetchsize": "1000"
+        "fetchsize": "5000"
     }
     
     try:
@@ -66,30 +66,35 @@ def db_to_gcs(spark: SparkSession,
 
 def main():
     spark = SparkSession.builder.appName("DBToGCS").getOrCreate()
-    
     spark.sparkContext.setLogLevel("WARN")
     
-    db_to_gcs(
-        spark=spark,
-        url_env="SQLSERVER_URL",
-        username_env="SQLSERVER_USERNAME",
-        password_env="SQLSERVER_PASSWORD",
-        driver="com.microsoft.sqlserver.jdbc.SQLServerDriver",
-        table_name="orders",
-        gcs_path="gs://sotatek-k8s-prac-bronze/orders",
-        partition_column="order_id",
-        lower_bound=1,
-        upper_bound=5000000
-    )
+    if len(sys.argv) < 3:
+        raise ValueError("Missing arguments: 'target_table' and 'db_type' are required")
     
+    target_table = sys.argv[1]
+    db_type = sys.argv[2]
+
+    if db_type == "sqlserver":
+        url_env = "SQLSERVER_URL"
+        username_env = "SQLSERVER_USERNAME"
+        password_env = "SQLSERVER_PASSWORD"
+        driver = "com.microsoft.sqlserver.jdbc.SQLServerDriver"
+    elif db_type == "postgres":
+        url_env = "POSTGRES_URL"
+        username_env = "POSTGRES_USERNAME"
+        password_env = "POSTGRES_PASSWORD"
+        driver = "org.postgresql.Driver"
+    else:
+        raise ValueError("Invalid 'db_type' argument")
+
     db_to_gcs(
         spark=spark,
-        url_env="POSTGRES_URL",
-        username_env="POSTGRES_USERNAME",
-        password_env="POSTGRES_PASSWORD",
-        driver="org.postgresql.Driver",
-        table_name="customer",
-        gcs_path="gs://sotatek-k8s-prac-bronze/customer",
+        url_env=url_env,
+        username_env=username_env,
+        password_env=password_env,
+        driver=driver,
+        table_name=target_table,
+        gcs_path=f"gs://sotatek-k8s-prac-bronze/{target_table}",
         partition_column="id",
         lower_bound=1,
         upper_bound=5000000

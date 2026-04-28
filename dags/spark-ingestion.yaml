@@ -1,7 +1,7 @@
 apiVersion: sparkoperator.k8s.io/v1beta2
 kind: SparkApplication
 metadata:
-  name: spark-ingestion
+  name: spark-ingestion-{{ params.table_name | lower }}
   namespace: spark
 spec:
   type: Python
@@ -16,9 +16,13 @@ spec:
   restartPolicy:
     type: OnFailure
 
+  arguments:
+    - "{{ params.table_name }}"
+    - "{{ params.db_type }}"
+
   driver:
-    cores: 1
-    memory: 1536m
+    cores: {{ params.driver_cores }}
+    memory: {{ params.driver_memory }}
     serviceAccount: spark
     securityContext:
       runAsUser: 1000
@@ -54,9 +58,9 @@ spec:
         key: PASSWORD
 
   executor:
-    cores: 1
-    instances: 1
-    memory: 1536m
+    cores: {{ params.executor_cores }}
+    instances: {{ params.executor_instances }}
+    memory: {{ params.executor_memory }}
     securityContext:
       runAsUser: 1000
 
