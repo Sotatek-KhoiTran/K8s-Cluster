@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spark-history-server
+  namespace: spark
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: spark-history-server
+  template:
+    metadata:
+      labels:
+        app: spark-history-server
+    spec:
+      serviceAccountName: spark
+      containers:
+      - name: history-server
+        image: apache/spark:3.5.0
+        command:
+        - /opt/spark/bin/spark-class
+        - org.apache.spark.deploy.history.HistoryServer
+        env:
+        - name: SPARK_HISTORY_OPTS
+          value: >-
+            -Dspark.history.fs.logDirectory=file:/tmp/spark-logs
+            -Dspark.history.ui.port=18080
+            -Dspark.history.retainedApplications=50
+        ports:
+        - containerPort: 18080
+          name: history-ui
+        volumeMounts:
+        - name: spark-logs
+          mountPath: /tmp/spark-logs
+        resources:
+          requests:
+            memory: 512Mi
+            cpu: 250m
+          limits:
+            memory: 1Gi
+            cpu: 500m
+      volumes:
+      - name: spark-logs
+        persistentVolumeClaim:
+          claimName: spark-logs-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: spark-history-server
+  namespace: spark
+spec:
+  selector:
+    app: spark-history-server
+  ports:
+  - port: 18080
+    targetPort: 18080
+    name: history-ui
+  type: ClusterIP
