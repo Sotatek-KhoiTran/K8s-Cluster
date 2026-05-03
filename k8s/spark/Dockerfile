@@ -10,14 +10,14 @@ ADD https://repo1.maven.org/maven2/com/google/cloud/bigdataoss/gcs-connector/had
 
 RUN chmod 644 /opt/spark/jars/*.jar
 
-RUN mkdir -p /opt/spark/jobs && chmod 755 /opt/spark/jobs
-
 RUN mkdir -p /tmp/spark-logs && chmod -R 777 /tmp/spark-logs
 
-COPY jobs/*.py /opt/spark/jobs
+# RUN mkdir -p /opt/spark/jobs && chmod 755 /opt/spark/jobs
 
-RUN chmod -R 755 /opt/spark/jobs
+# COPY jobs/*.py /opt/spark/jobs
+
+# RUN chmod -R 755 /opt/spark/jobs
 
 USER spark
 
-WORKDIR /opt/spark/jobs
+WORKDIR /opt/spark

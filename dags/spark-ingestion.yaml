@@ -9,7 +9,7 @@ spec:
   mode: cluster
   image: spark-custom:3.5.0
   imagePullPolicy: Never
-  mainApplicationFile: local:///opt/spark/jobs/db_to_gcs.py
+  mainApplicationFile: gs://sotatek-k8s-prac-scripts/spark/db_to_gcs.py
   sparkVersion: "3.5.0"
   forceDeletion: false
 
