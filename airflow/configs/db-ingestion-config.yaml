@@ -1,0 +1,17 @@
+- table_name: "orders"
+  db_type: "sqlserver"
+  driver_cores: 1
+  driver_memory: "1536m"
+  executor_cores: 2
+  executor_instances: 1
+  executor_memory: "1536m"
+  gcs_path: "gs://sotatek-k8s-prac-bronze/orders"
+
+- table_name: "customer"
+  db_type: "postgres"
+  driver_cores: 1
+  driver_memory: "1536m"
+  executor_cores: 2
+  executor_instances: 1
+  executor_memory: "1536m"
+  gcs_path: "gs://sotatek-k8s-prac-bronze/customer"

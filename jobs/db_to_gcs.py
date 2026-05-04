@@ -15,7 +15,8 @@ def db_to_gcs(spark: SparkSession,
               password_env: str,
               table_name: str, 
               gcs_path: str,
-              partition_column: Optional[str],
+              read_partition_column: Optional[str],
+              write_partition_value: Optional[str],
               lower_bound: Optional[int],
               upper_bound: Optional[int]) -> None:
     logger.info(f"Starting DB to GCS job for table: {table_name}")
@@ -36,11 +37,11 @@ def db_to_gcs(spark: SparkSession,
     }
     
     try:
-        if partition_column:
+        if read_partition_column:
             df = spark.read.jdbc(
                 url=jdbc_url,
                 table=table_name,
-                column=partition_column,
+                column=read_partition_column,
                 lowerBound=lower_bound,
                 upperBound=upper_bound,
                 numPartitions=10,
@@ -55,10 +56,19 @@ def db_to_gcs(spark: SparkSession,
         
         bronze_df = df \
             .withColumn("ingestion_timestamp", current_timestamp()) \
-            .withColumn("ingestion_date", to_date(col("ingestion_timestamp"))) \
             .withColumn("source_table", lit(table_name))
             
-        bronze_df.write.partitionBy("ingestion_date").mode("overwrite").parquet(gcs_path)
+        if write_partition_value:
+            bronze_df = bronze_df \
+                .withColumn("date", to_date(col(lit(write_partition_value)))) \
+                .withColumn("year", year(col("date"))) \
+                .withColumn("month", month(col("date"))) \
+                .withColumn("day", dayofmonth(col("date"))) 
+            
+            bronze_df.write.partitionBy("year", "month", "day").mode("overwrite").parquet(gcs_path)
+        else:
+            bronze_df.write.mode("overwrite").parquet(gcs_path)
+            
         logger.info(f"Data from {table_name} successfully written to {gcs_path}")
     except Exception as e:
         logger.error(f"Error processing table {table_name}: {e}", exc_info= True)
@@ -68,11 +78,12 @@ def main():
     spark = SparkSession.builder.appName("DBToGCS").getOrCreate()
     spark.sparkContext.setLogLevel("WARN")
     
-    if len(sys.argv) < 3:
-        raise ValueError("Missing arguments: 'target_table' and 'db_type' are required")
+    if len(sys.argv) < 4:
+        raise ValueError("Missing arguments: 'target_table', 'db_type', and 'data_interval_start' are required")
     
     target_table = sys.argv[1]
     db_type = sys.argv[2]
+    data_interval_start = sys.argv[3]
 
     if db_type == "sqlserver":
         url_env = "SQLSERVER_URL"
@@ -95,7 +106,8 @@ def main():
         driver=driver,
         table_name=target_table,
         gcs_path=f"gs://sotatek-k8s-prac-bronze/{target_table}",
-        partition_column="id",
+        read_partition_column="id",
+        write_partition_value=data_interval_start,
         lower_bound=1,
         upper_bound=5000000
     )

@@ -1,0 +1,119 @@
+apiVersion: sparkoperator.k8s.io/v1beta2
+kind: SparkApplication
+metadata:
+  name: db-ingestion-{{ params.config.table_name | lower | replace('_', '-') }}
+  namespace: spark
+spec:
+  type: Python
+  pythonVersion: "3"
+  mode: cluster
+  image: spark-custom:3.5.0
+  imagePullPolicy: Never
+  mainApplicationFile: gs://sotatek-k8s-prac-scripts/spark/db_to_gcs.py
+  sparkVersion: "3.5.0"
+  forceDeletion: false
+
+  restartPolicy:
+    type: OnFailure
+
+  arguments:
+    - "{{ params.config.table_name }}"
+    - "{{ params.config.db_type }}"
+    - "{{ params.data_interval_start }}"
+
+  driver:
+    cores: {{ params.config.driver_cores }}
+    memory: {{ params.config.driver_memory }}
+    serviceAccount: spark
+    securityContext:
+      runAsUser: 1000
+ 
+    volumeMounts:
+      - name: spark-logs
+        mountPath: /tmp/spark-logs
+
+    envVars:
+      HOME: /tmp
+     
+    envSecretKeyRefs:
+      SQLSERVER_URL:
+        name: sqlserver-credentials
+        key: URL
+      SQLSERVER_USERNAME:
+        name: sqlserver-credentials
+        key: USERNAME
+      SQLSERVER_PASSWORD:
+        name: sqlserver-credentials
+        key: PASSWORD
+      POSTGRES_URL:
+        name: pgsql-credentials
+        key: URL
+      POSTGRES_USERNAME:
+        name: pgsql-credentials
+        key: USERNAME
+      POSTGRES_PASSWORD:
+        name: pgsql-credentials
+        key: PASSWORD
+
+  executor:
+    cores: {{ params.config.executor_cores }}
+    instances: {{ params.config.executor_instances }}
+    memory: {{ params.config.executor_memory }}
+    securityContext:
+      runAsUser: 1000
+
+    volumeMounts:
+      - name: spark-logs
+        mountPath: /tmp/spark-logs
+
+    envVars:
+      HOME: /tmp
+
+    envSecretKeyRefs:
+      SQLSERVER_URL:
+        name: sqlserver-credentials
+        key: URL
+      SQLSERVER_USERNAME:
+        name: sqlserver-credentials
+        key: USERNAME
+      SQLSERVER_PASSWORD:
+        name: sqlserver-credentials
+        key: PASSWORD
+      POSTGRES_URL:
+        name: pgsql-credentials
+        key: URL
+      POSTGRES_USERNAME:
+        name: pgsql-credentials
+        key: USERNAME
+      POSTGRES_PASSWORD:
+        name: pgsql-credentials
+        key: PASSWORD
+
+  volumes:
+    - name: spark-logs
+      persistentVolumeClaim:
+        claimName: spark-logs-pvc
+
+  sparkConf:
+    spark.hadoop.fs.gs.impl: com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem
+    spark.hadoop.fs.AbstractFileSystem.gs.impl: com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS
+    spark.hadoop.google.cloud.auth.service.account.enable: "true"
+    spark.hadoop.fs.gs.auth.type: SERVICE_ACCOUNT_JSON_KEYFILE
+    spark.hadoop.fs.gs.auth.service.account.json.keyfile: "/opt/spark/secrets/key.json"
+
+    spark.jars.ivy: "/tmp/.ivy2"
+    spark.driver.extraJavaOptions: "-Divy.home=/tmp/.ivy2 -Djava.io.tmpdir=/tmp -Duser.home=/tmp"
+    spark.executor.extraJavaOptions: "-Divy.home=/tmp/.ivy2 -Djava.io.tmpdir=/tmp -Duser.home=/tmp"
+
+    spark.eventLog.enabled: "true"
+    spark.eventLog.dir: "file:/tmp/spark-logs"
+    
+    spark.kubernetes.driver.volumes.persistentVolumeClaim.spark-logs.mount.path: "/tmp/spark-logs"
+    spark.kubernetes.driver.volumes.persistentVolumeClaim.spark-logs.options.claimName  : "spark-logs-pvc"
+    spark.kubernetes.executor.volumes.persistentVolumeClaim.spark-logs.mount.path: "/tmp/spark-logs"
+    spark.kubernetes.executor.volumes.persistentVolumeClaim.spark-logs.options.claimName: "spark-logs-pvc"
+
+    spark.kubernetes.driver.secrets.gcp-sa-key: "/opt/spark/secrets"
+    spark.kubernetes.executor.secrets.gcp-sa-key: "/opt/spark/secrets"
+
+    spark.sql.sources.partitionOverwriteMode: "dynamic"
