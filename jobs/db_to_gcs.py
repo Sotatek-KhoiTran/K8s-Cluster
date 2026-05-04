@@ -59,8 +59,11 @@ def db_to_gcs(spark: SparkSession,
             .withColumn("source_table", lit(table_name))
             
         if write_partition_value:
+            # clean_date_str = write_partition_value.strip(" '\"")
+            print(f"--- DEBUG: The date string is: '{write_partition_value}' ---")
+            
             bronze_df = bronze_df \
-                .withColumn("date", to_date((lit(write_partition_value)))) \
+                .withColumn("date", to_date(lit(write_partition_value), "yyyy-MM-dd")) \
                 .withColumn("year", year(col("date"))) \
                 .withColumn("month", month(col("date"))) \
                 .withColumn("day", dayofmonth(col("date"))) 

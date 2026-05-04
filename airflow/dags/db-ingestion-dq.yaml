@@ -19,7 +19,7 @@ spec:
   arguments:
     - "{{ params.config.table_name }}"
     - "{{ params.config.gcs_path}}"
-    - "{{ params.data_interval_start }}"
+    - "{{ ds }}"
 
   driver:
     cores: {{ params.config.driver_cores }}
