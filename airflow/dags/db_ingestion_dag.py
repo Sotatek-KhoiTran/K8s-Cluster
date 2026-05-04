@@ -29,7 +29,7 @@ dag = DAG(
 )
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-CONFIG_PATH = os.path.join(BASE_DIR, "../configs/db-ingestion-config.yaml")
+CONFIG_PATH = os.path.join(BASE_DIR, "configs/db-ingestion-config.yaml")
 
 with open(CONFIG_PATH, "r") as f:
     spark_config = yaml.safe_load(f)
