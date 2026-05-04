@@ -41,7 +41,7 @@ for config in spark_config:
         application_file="db-ingestion-app.yaml",
         params={
             "config": config,
-            "data_interval_start": "{{ data_interval_start }}",    
+            "data_interval_start": "{{ data_interval_start | ds }}",    
         },
         dag=dag,
         kubernetes_conn_id="kubernetes_default",
@@ -55,7 +55,7 @@ for config in spark_config:
         application_file="db-ingestion-dq.yaml",
         params={
             "config": config,
-            "data_interval_start": "{{ data_interval_start }}",
+            "data_interval_start": "{{ data_interval_start | ds }}",
         },
         dag=dag,
         kubernetes_conn_id="kubernetes_default",

@@ -60,7 +60,7 @@ def db_to_gcs(spark: SparkSession,
             
         if write_partition_value:
             bronze_df = bronze_df \
-                .withColumn("date", to_date(col(lit(write_partition_value)))) \
+                .withColumn("date", to_date((lit(write_partition_value)))) \
                 .withColumn("year", year(col("date"))) \
                 .withColumn("month", month(col("date"))) \
                 .withColumn("day", dayofmonth(col("date"))) 
