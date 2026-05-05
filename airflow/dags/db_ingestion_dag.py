@@ -9,6 +9,7 @@ from email.mime.text import MIMEText
 from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.providers.cncf.kubernetes.operators.spark_kubernetes import SparkKubernetesOperator
+from airflow.operators.python import PythonOperator
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -18,7 +19,8 @@ def send_email_on_failure(context):
     dag_id = context.get('task_instance').dag_id
     execution_date = context.get('execution_date')
     log_url = context.get('task_instance').log_url
-
+    error = context.get("exception")
+    
     sender_email = os.getenv("SENDER_EMAIL")
     receiver_email = os.getenv("RECEIVER_EMAIL")
     password = os.getenv("AIRFLOW__SMTP__SMTP_PASSWORD")
@@ -34,6 +36,9 @@ def send_email_on_failure(context):
     DAG: {dag_id}
     Task: {task_id}
     Execution Date: {execution_date}
+    
+    Error:
+    {error}
     
     View Logs here: {log_url}
     """
@@ -57,7 +62,7 @@ default_args = {
     "email_on_failure": False,
     "email_on_retry": False,
     "on_failure_callback": send_email_on_failure,
-    "retries": 1,
+    "retries": 0,
     "retry_delay": timedelta(minutes=5),
 }
 
