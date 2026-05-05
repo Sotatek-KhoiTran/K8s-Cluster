@@ -1,5 +1,6 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import *
+import pyspark.sql.functions as F
 from datetime import datetime, timedelta
 
 import sys
@@ -50,7 +51,7 @@ def run_dq_checks(spark: SparkSession, table_name: str, gcs_path: str, data_inte
     if table_name == "orders":
         check_cols = ["id", "user_id", "created_at"]
         df_null = df.select([
-            sum(col(c).isNull().cast("int")).alias(c)
+            F.sum(F.col(c).isNull().cast("int")).alias(c)
             for c in check_cols
         ])
         null_counts = df_null.collect()[0].asDict()
@@ -63,7 +64,7 @@ def run_dq_checks(spark: SparkSession, table_name: str, gcs_path: str, data_inte
     if table_name == "customer":
         check_cols = ["id", "user_name", "age", "created_at"]
         df_null = df.select([
-            sum(col(c).isNull().cast("int")).alias(c)
+            F.sum(F.col(c).isNull().cast("int")).alias(c)
             for c in check_cols
         ])
         null_counts = df_null.collect()[0].asDict()
@@ -73,12 +74,12 @@ def run_dq_checks(spark: SparkSession, table_name: str, gcs_path: str, data_inte
             else:
                 logger.info(f"Null Check Passed: Column '{col}' has no null values.")
                 
-        invalid_age_count = df.filter(col("age") < 18 | col("age") > 100).count()
+        invalid_age_count = df.filter(col("age").cast("int") < 18 | col("age").cast("int") > 100).count()
         if invalid_age_count > 0:   
             errors.append(f"Numeric Distribution Failed: Found {invalid_age_count} records with invalid ages.")
             
     if errors:
-        logger.info(f"Data Quality Checks Failed for table '{table_name}':\n")
+        logger.error(f"Data Quality Checks Failed for table '{table_name}':\n")
         for error in errors:
             logger.error(f"- {error}")
         raise Exception(f"Data Quality checks failed for {table_name}. See logs for details.")
@@ -87,6 +88,7 @@ def run_dq_checks(spark: SparkSession, table_name: str, gcs_path: str, data_inte
         
 if __name__ == "__main__":
     spark = SparkSession.builder.appName("DB Ingestion DQ Checks").getOrCreate()
+    spark.sparkContext.setLogLevel("WARN")
     
     if len(sys.argv) < 4:
         raise ValueError("Missing arguments: 'table_name', 'gcs_path' and 'data_interval_start' are required")
