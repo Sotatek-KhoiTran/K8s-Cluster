@@ -19,12 +19,20 @@ def send_email_on_failure(context):
     dag_id = context.get('task_instance').dag_id
     execution_date = context.get('execution_date')
     log_url = context.get('task_instance').log_url
-    error = context.get("exception")
+    # error = context.get("exception")
     
+    ti = context.get("task_instance")
+    logs = ti.log.read()
+    error_lines = [
+        line for line in logs.splitlines()
+        if "ERROR" in line or "Exception" in line 
+    ]
+    error_message = "\n".join(error_lines[-10:])
+
     sender_email = os.getenv("SENDER_EMAIL")
     receiver_email = os.getenv("RECEIVER_EMAIL")
     password = os.getenv("AIRFLOW__SMTP__SMTP_PASSWORD")
-
+    
     msg = MIMEMultipart()
     msg['From'] = f"Airflow Alerts <{sender_email}>"
     msg['To'] = receiver_email
@@ -38,7 +46,7 @@ def send_email_on_failure(context):
     Execution Date: {execution_date}
     
     Error:
-    {error}
+    {error_message}
     
     View Logs here: {log_url}
     """
