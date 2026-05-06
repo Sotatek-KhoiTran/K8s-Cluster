@@ -32,6 +32,18 @@ data:
         <name>hive.metastore.schema.verification</name>
         <value>false</value>
       </property>
+      <property>
+        <name>fs.gs.impl</name>
+        <value>com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem</value>
+      </property>
+      <property>
+        <name>google.cloud.auth.service.account.enable</name>
+        <value>true</value>
+      </property>
+      <property>
+        <name>google.cloud.auth.service.account.json.keyfile</name>
+        <value>/opt/hive/keys/key.json</value>
+      </property>
     </configuration>
 
 ---
@@ -51,19 +63,40 @@ spec:
       labels:
         app: hive-metastore
     spec:
-      # InitContainer: Formats the empty Postgres DB with Hive tables before HMS starts
+      # 1. Add a shared volume for the JAR
+      volumes:
+        - name: hive-lib-ext
+          emptyDir: {}
+        - name: hive-config
+          configMap:
+            name: hive-metastore-config
+        - name: hive-gcp-key
+          secret:
+            secretName: hive-gcp-key  
+
       initContainers:
+        # 2. Add an init container to download the JAR (matching your Spark version)
+        - name: fetch-gcs-jar
+          image: curlimages/curl
+          command: ["/bin/sh", "-c"]
+          args: 
+            - curl -L https://repo1.maven.org/maven2/com/google/cloud/bigdataoss/gcs-connector/hadoop3-2.2.14/gcs-connector-hadoop3-2.2.14-shaded.jar -o /ext-lib/gcs-connector.jar
+          volumeMounts:
+            - name: hive-lib-ext
+              mountPath: /ext-lib
+              
         - name: init-metastore-schema
-          # Using a standard image that includes the Postgres JDBC driver
           image: apache/hive:3.1.3
-          command: ["/opt/hive/bin/schematool"]
-          args: ["-dbType", "postgres", "-initSchema"]
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              /opt/hive/bin/schematool -dbType postgres -info || \
+              /opt/hive/bin/schematool -dbType postgres -initSchema
           volumeMounts:
             - name: hive-config
               mountPath: /opt/hive/conf/hive-site.xml
               subPath: hive-site.xml
       
-      # Main Container: Starts the Thrift Server
       containers:
         - name: metastore
           image: apache/hive:3.1.3
@@ -75,11 +108,13 @@ spec:
             - name: hive-config
               mountPath: /opt/hive/conf/hive-site.xml
               subPath: hive-site.xml
-      
-      volumes:
-        - name: hive-config
-          configMap:
-            name: hive-metastore-config
+            - name: hive-lib-ext
+              mountPath: /opt/hive/lib/gcs-connector.jar
+              subPath: gcs-connector.jar
+            - name: hive-gcp-key
+              mountPath: /opt/hive/keys/key.json
+              subPath: key.json
+
 
 ---
 # 3. Service: Exposing HMS to Spark/Airflow pods

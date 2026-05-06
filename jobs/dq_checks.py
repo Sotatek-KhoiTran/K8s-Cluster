@@ -74,7 +74,7 @@ def run_dq_checks(spark: SparkSession, table_name: str, gcs_path: str, data_inte
             else:
                 logger.info(f"Null Check Passed: Column '{col}' has no null values.")
                 
-        invalid_age_count = df.filter(col("age").cast("int") < 18 | col("age").cast("int") > 100).count()
+        invalid_age_count = df.filter((F.col("age").cast("int") < 18) | (F.col("age").cast("int") > 100)).count()
         if invalid_age_count > 0:   
             errors.append(f"Numeric Distribution Failed: Found {invalid_age_count} records with invalid ages.")
             
