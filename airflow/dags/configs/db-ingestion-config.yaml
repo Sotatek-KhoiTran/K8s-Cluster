@@ -5,7 +5,7 @@
   executor_cores: 2
   executor_instances: 1
   executor_memory: "1536m"
-  gcs_path: "gs://sotatek-k8s-prac-bronze/orders"
+  gcs_path: "gs://sota-data-lake/bronze/orders"
 
 - table_name: "customer"
   db_type: "postgres"
@@ -14,4 +14,4 @@
   executor_cores: 2
   executor_instances: 1
   executor_memory: "1536m"
-  gcs_path: "gs://sotatek-k8s-prac-bronze/customer"
+  gcs_path: "gs://sota-data-lake/bronze/customer"

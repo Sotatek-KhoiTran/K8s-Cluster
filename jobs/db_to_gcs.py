@@ -57,9 +57,15 @@ def db_to_gcs(spark: SparkSession,
         bronze_df = df \
             .withColumn("ingestion_timestamp", current_timestamp()) \
             .withColumn("source_table", lit(table_name))
-            
+        
+        spark.sql("""
+                  CREATE DATABASE IF NOT EXISTS bronze
+                  LOCATION 'gs://sota-data-lake/bronze'
+                  """)
+        logger.info(f"Database 'bronze' is ready.")
+        
         if write_partition_value:
-            print(f"--- DEBUG: The date string is: '{write_partition_value}' ---")
+            logger.info(f"--- DEBUG: The date string is: '{write_partition_value}' ---")
             
             bronze_df = bronze_df \
                 .withColumn("date", to_date(lit(write_partition_value), "yyyy-MM-dd")) \
@@ -81,12 +87,21 @@ def db_to_gcs(spark: SparkSession,
                 .saveAsTable(f"bronze.{table_name}")
             
         logger.info(f"Data from {table_name} successfully written to {gcs_path}")
+        
+        logger.info(f"Verifying data in Hive table bronze.{table_name}")
+        spark.sql(f"DESCRIBE EXTENDED bronze.{table_name}").show(truncate=False)
+        spark.sql(f"SELECT * FROM bronze.{table_name} LIMIT 10").show()
     except Exception as e:
         logger.error(f"Error processing table {table_name}: {e}", exc_info= True)
         raise
 
 def main():
-    spark = SparkSession.builder.appName("DBToGCS").enableHiveSupport().getOrCreate()
+    spark = SparkSession.builder \
+        .appName("DBToGCS") \
+        .config("spark.sql.warehouse.dir", "gs://sota-data-lake/warehouse") \
+        .enableHiveSupport() \
+        .getOrCreate()
+        
     spark.sparkContext.setLogLevel("WARN")
     
     if len(sys.argv) < 4:
@@ -116,7 +131,7 @@ def main():
         password_env=password_env,
         driver=driver,
         table_name=target_table,
-        gcs_path=f"gs://sotatek-k8s-prac-bronze/{target_table}",
+        gcs_path=f"gs://sota-data-lake/bronze/{target_table}",
         read_partition_column="id",
         write_partition_value=data_interval_start,
         lower_bound=1,
