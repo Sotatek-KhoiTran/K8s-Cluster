@@ -59,7 +59,6 @@ def db_to_gcs(spark: SparkSession,
             .withColumn("source_table", lit(table_name))
             
         if write_partition_value:
-            # clean_date_str = write_partition_value.strip(" '\"")
             print(f"--- DEBUG: The date string is: '{write_partition_value}' ---")
             
             bronze_df = bronze_df \
@@ -68,9 +67,18 @@ def db_to_gcs(spark: SparkSession,
                 .withColumn("month", month(col("date"))) \
                 .withColumn("day", dayofmonth(col("date"))) 
             
-            bronze_df.write.partitionBy("year", "month", "day").mode("overwrite").parquet(gcs_path)
+            bronze_df.write \
+                .mode("overwrite") \
+                .option("path", gcs_path) \
+                .partitionBy("year", "month", "day") \
+                .format("parquet") \
+                .saveAsTable(f"bronze.{table_name}")
         else:
-            bronze_df.write.mode("overwrite").parquet(gcs_path)
+            bronze_df.write \
+                .mode("overwrite") \
+                .option("path", gcs_path) \
+                .format("parquet") \
+                .saveAsTable(f"bronze.{table_name}")
             
         logger.info(f"Data from {table_name} successfully written to {gcs_path}")
     except Exception as e:
@@ -78,7 +86,7 @@ def db_to_gcs(spark: SparkSession,
         raise
 
 def main():
-    spark = SparkSession.builder.appName("DBToGCS").getOrCreate()
+    spark = SparkSession.builder.appName("DBToGCS").enableHiveSupport().getOrCreate()
     spark.sparkContext.setLogLevel("WARN")
     
     if len(sys.argv) < 4:

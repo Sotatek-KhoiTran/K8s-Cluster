@@ -117,3 +117,6 @@ spec:
     spark.kubernetes.executor.secrets.gcp-sa-key: "/opt/spark/secrets"
 
     spark.sql.sources.partitionOverwriteMode: "dynamic"
+    
+    spark.hadoop.hive.metastore.uris: "thrift://hive-metastore-service.default.svc.cluster.local:9083"
+    spark.sql.catalogImplementation: "hive"
